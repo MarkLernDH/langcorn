@@ -21,7 +21,7 @@ from fastapi import FastAPI
 
 os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "sk-********")
 serper_api_key = os.environ.get("SERP_API_KEY")
-brwoserless_api_key = os.environ.get("BROWSERLESS_API_KEY")
+browserless_api_key = os.environ.get("BROWSERLESS_API_KEY")
 
 # 1. Tool for search
 
@@ -66,7 +66,7 @@ def scrape_website(objective: str, url: str):
     data_json = json.dumps(data)
 
     # Send the POST request
-    post_url = f"https://chrome.browserless.io/content?token={brwoserless_api_key}"
+    post_url = f"https://chrome.browserless.io/content?token={browserless_api_key}"
     response = requests.post(post_url, headers=headers, data=data_json)
     
     # Check the response status code
