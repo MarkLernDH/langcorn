@@ -16,6 +16,7 @@ import requests
 import json
 from langchain.schema import SystemMessage
 from fastapi import FastAPI
+from requests.exceptions import Timeout, HTTPError
 #import streamlit as st
 
 
@@ -24,7 +25,6 @@ serper_api_key = os.environ.get("SERP_API_KEY")
 browserless_api_key = os.environ.get("BROWSERLESS_API_KEY")
 
 # 1. Tool for search
-
 
 def search(query):
     url = "https://google.serper.dev/search"
@@ -38,11 +38,26 @@ def search(query):
         'Content-Type': 'application/json'
     }
 
-    response = requests.request("POST", url, headers=headers, data=payload)
+    try:
+        # Send the POST request with a timeout
+        response = requests.post(url, headers=headers, data=payload, timeout=10)
+        response.raise_for_status()  # Raises an HTTPError if the status is 4xx or 5xx
+        return response.text
 
-    print(response.text)
+    except Timeout:
+        # Handle a timeout error
+        print("The search request timed out.")
+        return None  # Or handle it some other way, maybe retry the request
 
-    return response.text
+    except HTTPError as http_err:
+        # Handle HTTP error responses (e.g., 401, 403, 404, etc.)
+        print(f"HTTP error occurred: {http_err} - {response.text}")
+        return None  # Or handle it some other way
+
+    except Exception as err:
+        # Handle any other exceptions
+        print(f"Other error occurred: {err}")
+        return None  # Or handle it some other way
 
 
 # 2. Tool for scraping
