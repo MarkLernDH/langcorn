@@ -19,9 +19,10 @@ from langchain.schema import SystemMessage
 from fastapi import FastAPI
 #import streamlit as st
 
-load_dotenv()
-brwoserless_api_key = os.getenv("BROWSERLESS_API_KEY")
-serper_api_key = os.getenv("SERP_API_KEY")
+
+os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "sk-********")
+serper_api_key = os.environ.get("SERP_API_KEY")
+brwoserless_api_key = os.environ.get("BROWSERLESS_API_KEY")
 
 # 1. Tool for search
 
