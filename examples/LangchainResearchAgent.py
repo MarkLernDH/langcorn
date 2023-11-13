@@ -16,7 +16,6 @@ import requests
 import json
 from langchain.schema import SystemMessage
 from fastapi import FastAPI
-from requests.exceptions import Timeout, HTTPError
 #import streamlit as st
 
 
@@ -25,6 +24,7 @@ serper_api_key = os.environ.get("SERP_API_KEY")
 browserless_api_key = os.environ.get("BROWSERLESS_API_KEY")
 
 # 1. Tool for search
+
 
 def search(query):
     url = "https://google.serper.dev/search"
@@ -38,60 +38,55 @@ def search(query):
         'Content-Type': 'application/json'
     }
 
-    try:
-        # Send the POST request with a timeout
-        response = requests.post(url, headers=headers, data=payload, timeout=10)
-        response.raise_for_status()  # Raises an HTTPError if the status is 4xx or 5xx
-        return response.text
+    response = requests.request("POST", url, headers=headers, data=payload)
 
-    except Timeout:
-        # Handle a timeout error
-        print("The search request timed out.")
-        return None  # Or handle it some other way, maybe retry the request
+    print(response.text)
 
-    except HTTPError as http_err:
-        # Handle HTTP error responses (e.g., 401, 403, 404, etc.)
-        print(f"HTTP error occurred: {http_err} - {response.text}")
-        return None  # Or handle it some other way
-
-    except Exception as err:
-        # Handle any other exceptions
-        print(f"Other error occurred: {err}")
-        return None  # Or handle it some other way
+    return response.text
 
 
 # 2. Tool for scraping
-# Replace your existing scrape_website function with this updated one
 def scrape_website(objective: str, url: str):
+    # scrape website, and also will summarize the content based on objective if the content is too large
+    # objective is the original objective & task that user give to the agent, url is the url of the website to be scraped
+
     print("Scraping website...")
+    # Define the headers for the request
     headers = {
         'Cache-Control': 'no-cache',
         'Content-Type': 'application/json',
     }
-    data = {"url": url}
+
+    # Define the data to be sent in the request
+    data = {
+        "url": url
+    }
+
+    # Convert Python object to JSON string
     data_json = json.dumps(data)
+
+    # Send the POST request
     post_url = f"https://chrome.browserless.io/content?token={browserless_api_key}"
-
-    try:
-        # Make sure to use the correct variable name for the API key
-        response = requests.post(post_url, headers=headers, data=data_json, timeout=10)
-        response.raise_for_status()  # This will raise an error for response codes that indicate an error
-
+    response = requests.post(post_url, headers=headers, data=data_json)
+    
+    # Check the response status code
+    if response.status_code == 200:
         soup = BeautifulSoup(response.content, "html.parser")
-        # Perform the rest of your scraping and summarization logic here ...
+        for script in soup(["script", "style"]):
+            script.decompose()
+        text = soup.get_text()
+        print("CONTENTTTTTT:", text)
 
-    except requests.exceptions.Timeout:
-        # Handle timeout - e.g., by logging, retrying, or aborting the operation
-        print("The request to the external service timed out.")
-        return None  # or you could raise an error or handle it in another way
-    except requests.exceptions.RequestException as e:
-        # Handle any other requests exceptions
-        print(f"HTTP request failed: {e}")
-        return None
-    except Exception as e:
-        # Handle any other exceptions
-        print(f"An unexpected error occurred: {e}")
-        return None
+        if len(text) > 10000:
+            output = summary(objective, text)
+            
+            return output
+        else:
+            return text
+    else:
+        print(f"HTTP request failed with status code {response.status_code}")
+
+
 
 def summary(objective, content):
     llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
