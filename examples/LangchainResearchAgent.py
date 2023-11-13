@@ -15,6 +15,8 @@ from bs4 import BeautifulSoup
 import requests
 import json
 from langchain.schema import SystemMessage
+from langchain.callbacks import StreamingStdOutCallbackHandler
+from langchain.llms import OpenAI
 from fastapi import FastAPI
 #import streamlit as st
 
@@ -22,6 +24,11 @@ from fastapi import FastAPI
 os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "sk-********")
 serper_api_key = os.environ.get("SERP_API_KEY")
 browserless_api_key = os.environ.get("BROWSERLESS_API_KEY")
+
+def stream_handler(output):
+    # Process and display partial results here
+    # For example, print them or send them back to the client via WebSockets
+    print(output)
 
 # 1. Tool for search
 
@@ -89,7 +96,8 @@ def scrape_website(objective: str, url: str):
 
 
 def summary(objective, content):
-    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
+    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613", streaming=True)
+   
 
     text_splitter = RecursiveCharacterTextSplitter(
         separators=["\n\n", "\n"], chunk_size=10000, chunk_overlap=500)
@@ -166,13 +174,14 @@ agent_kwargs = {
 llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
 memory = ConversationSummaryBufferMemory(
     memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
-
+callback_handler = StreamingStdOutCallbackHandler(callback=stream_handler)
 agent = initialize_agent(
     tools,
     llm,
     agent=AgentType.OPENAI_FUNCTIONS,
     verbose=True,
     agent_kwargs=agent_kwargs,
+    callback_handler=callback_handler,
     memory=memory,
 )
 
