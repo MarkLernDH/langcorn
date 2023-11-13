@@ -1,5 +1,4 @@
 import os
-from dotenv import load_dotenv
 
 from langchain import PromptTemplate
 from langchain.agents import initialize_agent, Tool
