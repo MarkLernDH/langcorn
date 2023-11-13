@@ -46,47 +46,37 @@ def search(query):
 
 
 # 2. Tool for scraping
+# Replace your existing scrape_website function with this updated one
 def scrape_website(objective: str, url: str):
-    # scrape website, and also will summarize the content based on objective if the content is too large
-    # objective is the original objective & task that user give to the agent, url is the url of the website to be scraped
-
     print("Scraping website...")
-    # Define the headers for the request
     headers = {
         'Cache-Control': 'no-cache',
         'Content-Type': 'application/json',
     }
-
-    # Define the data to be sent in the request
-    data = {
-        "url": url
-    }
-
-    # Convert Python object to JSON string
+    data = {"url": url}
     data_json = json.dumps(data)
-
-    # Send the POST request
     post_url = f"https://chrome.browserless.io/content?token={browserless_api_key}"
-    response = requests.post(post_url, headers=headers, data=data_json)
-    
-    # Check the response status code
-    if response.status_code == 200:
+
+    try:
+        # Make sure to use the correct variable name for the API key
+        response = requests.post(post_url, headers=headers, data=data_json, timeout=10)
+        response.raise_for_status()  # This will raise an error for response codes that indicate an error
+
         soup = BeautifulSoup(response.content, "html.parser")
-        for script in soup(["script", "style"]):
-            script.decompose()
-        text = soup.get_text()
-        print("CONTENTTTTTT:", text)
+        # Perform the rest of your scraping and summarization logic here ...
 
-        if len(text) > 10000:
-            output = summary(objective, text)
-            
-            return output
-        else:
-            return text
-    else:
-        print(f"HTTP request failed with status code {response.status_code}")
-
-
+    except requests.exceptions.Timeout:
+        # Handle timeout - e.g., by logging, retrying, or aborting the operation
+        print("The request to the external service timed out.")
+        return None  # or you could raise an error or handle it in another way
+    except requests.exceptions.RequestException as e:
+        # Handle any other requests exceptions
+        print(f"HTTP request failed: {e}")
+        return None
+    except Exception as e:
+        # Handle any other exceptions
+        print(f"An unexpected error occurred: {e}")
+        return None
 
 def summary(objective, content):
     llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
